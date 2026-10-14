@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FirefightersSP - Sistema de Gestão de Ocorrências</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #374151;
+        }
+        .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
+        .header {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+        .logo { display: flex; align-items: center; gap: 12px; }
+        .logo-icon {
+            width: 50px; height: 50px;
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            color: white; font-weight: bold; font-size: 20px;
+        }
+        .logo-text h1 { font-size: 24px; font-weight: 700; color: #1f2937; }
+        .logo-text p { font-size: 14px; color: #6b7280; }
+        .auth-section { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+        .auth-input {
+            padding: 10px 16px; border: 2px solid #e5e7eb;
+            border-radius: 8px; font-size: 14px; min-width: 150px;
+        }
+        .auth-input:focus { outline: none; border-color: #3b82f6; }
+        .btn {
+            padding: 10px 20px; border: none; border-radius: 8px;
+            font-size: 14px; font-weight: 600; cursor: pointer;
+            transition: all 0.3s; display: inline-flex; align-items: center; gap: 8px;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            color: white;
+        }
+        .btn-primary:hover { background: linear-gradient(135deg, #dc2626, #b91c1c); transform: translateY(-1px); }
+        .btn-secondary { background: white; color: #374151; border: 2px solid #e5e7eb; }
+        .btn-secondary:hover { background: #f9fafb; }
+        .main-content { display: grid; grid-template-columns: 300px 1fr; gap: 20px; }
+        .sidebar {
+            background: white; padding: 20px; border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); height: fit-content;
+        }
+        .nav-menu { list-style: none; }
+        .nav-item {
+            padding: 12px 16px; margin-bottom: 4px; border-radius: 8px;
+            cursor: pointer; transition: all 0.3s; display: flex;
+            align-items: center; gap: 10px; color: #6b7280;
+        }
+        .nav-item:hover { background: #f3f4f6; color: #1f2937; }
+        .nav-item.active { background: linear-gradient(135deg, #ef4444, #dc2626); color: white; }
+        .content-area { display: flex; flex-direction: column; gap: 20px; }
+        .card {
+            background: white; padding: 24px; border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .card-title { font-size: 18px; font-weight: 700; color: #1f2937; }
+        .map-container { height: 500px; border-radius: 8px; overflow: hidden; border: 2px solid #e5e7eb; }
+        #map, #full-map { height: 100%; width: 100%; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px; border-radius: 12px; color: white; text-align: center;
+        }
+        .stat-value { font-size: 28px; font-weight: 700; margin-bottom: 4px; }
+        .stat-label { font-size: 12px; opacity: 0.9; }
+        .table-container { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #e5e7eb; }
+        th { font-size: 12px; font-weight: 600; color: #6b7280; text-transform: uppercase; }
+        td { font-size: 14px; color: #374151; }
+        tr:hover { background: #f9fafb; }
+        .badge {
+            display: inline-block; padding: 4px 10px; border-radius: 20px;
+            font-size: 12px; font-weight: 600;
+        }
+        .badge-success { background: #d1fae5; color: #065f46; }
+        .badge-warning { background: #fef3c7; color: #92400e; }
+        .badge-danger { background: #fee2e2; color: #991b1b; }
+        .badge-info { background: #dbeafe; color: #1e40af; }
+        .quick-actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+        .quick-action-btn {
+            display: flex; flex-direction: column; align-items: center; gap: 8px;
+            padding: 16px; background: #f9fafb; border: 2px solid #e5e7eb;
+            border-radius: 12px; cursor: pointer; transition: all 0.3s;
+        }
+        .quick-action-btn:hover { background: #f3f4f6; border-color: #3b82f6; }
+        .quick-action-icon { font-size: 24px; color: #ef4444; }
+        .quick-action-text { font-size: 12px; font-weight: 600; color: #374151; text-align: center; }
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0, 0, 0, 0.5); display: flex; align-items: center;
+            justify-content: center; z-index: 1000;
+        }
+        .modal {
+            background: white; padding: 30px; border-radius: 16px;
+            max-width: 500px; width: 90%; max-height: 80vh; overflow-y: auto;
+        }
+        .modal-header { text-align: center; margin-bottom: 20px; }
+        .modal-title { font-size: 20px; font-weight: 700; color: #1f2937; }
+        .modal-body { margin-bottom: 20px; }
+        .modal-footer { display: flex; gap: 10px; justify-content: flex-end; }
+        .form-group { margin-bottom: 16px; }
+        .form-label { display: block; font-size: 14px; font-weight: 600; color: #374151; margin-bottom: 6px; }
+        .form-input {
+            width: 100%; padding: 10px 14px; border: 2px solid #e5e7eb;
+            border-radius: 8px; font-size: 14px;
+        }
+        .form-input:focus { outline: none; border-color: #3b82f6; }
+        .form-select {
+            width: 100%; padding: 10px 14px; border: 2px solid #e5e7eb;
+            border-radius: 8px; font-size: 14px; background: white; cursor: pointer;
+        }
+        .registration-section { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+        .registration-card { background: white; padding: 24px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); }
+        .checkbox-container { display: flex; flex-direction: column; gap: 12px; }
+        .checkbox-group { display: flex; align-items: center; gap: 10px; }
+        .checkbox-input { width: 20px; height: 20px; accent-color: #ef4444; cursor: pointer; }
+        .checkbox-label { font-size: 14px; color: #374151; cursor: pointer; }
+        .checkbox-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; }
+        .loading { display: flex; align-items: center; justify-content: center; padding: 40px; }
+        .spinner {
+            width: 40px; height: 40px; border: 4px solid #f3f4f6;
+            border-top-color: #ef4444; border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .section { display: none; }
+        .section.active { display: block; }
+        .map-controls { display: flex; gap: 10px; margin-bottom: 12px; }
+        .map-control-btn {
+            padding: 8px 12px; background: white; border: 2px solid #e5e7eb;
+            border-radius: 8px; cursor: pointer; transition: all 0.3s;
+        }
+        .map-control-btn:hover { background: #f3f4f6; }
+        .map-control-btn.active { background: #3b82f6; color: white; border-color: #3b82f6; }
+        @media (max-width: 768px) {
+            .main-content { grid-template-columns: 1fr; }
+            .sidebar { order: 1; }
+            .content-area { order: 2; }
+            .header { flex-direction: column; }
+            .auth-section { width: 100%; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <div class="logo">
+                <div class="logo-icon">FB</div>
+                <div class="logo-text">
+                    <h1>FirefightersSP</h1>
+                    <p>Sistema de Gestão de Ocorrências</p>
+                </div>
+            </div>
+            <div class="auth-section">
+                <input type="email" id="loginEmail" class="auth-input" placeholder="Email" />
+                <input type="password" id="loginPassword" class="auth-input" placeholder="Senha" />
+                <button class="btn btn-primary" onclick="handleLogin()"><i class="fas fa-sign-in-alt"></i> Entrar</button>
+                <button class="btn btn-secondary" onclick="showRegisterModal()"><i class="fas fa-user-plus"></i> Cadastre-se</button>
+            </div>
+        </header>
+        <div class="main-content">
+            <aside class="sidebar">
+                <nav>
+                    <ul class="nav-menu">
+                        <li class="nav-item active" onclick="showSection('dashboard')"><i class="fas fa-th-large"></i><span>Dashboard</span></li>
+                        <li class="nav-item" onclick="showSection('mapa')"><i class="fas fa-map-marked-alt"></i><span>Mapa</span></li>
+                        <li class="nav-item" onclick="showSection('solicitacoes')"><i class="fas fa-exclamation-triangle"></i><span>Solicitações</span></li>
+                        <li class="nav-item" onclick="showSection('viaturas')"><i class="fas fa-truck"></i><span>Viaturas</span></li>
+                        <li class="nav-item" onclick="showSection('plantoes')"><i class="fas fa-calendar-alt"></i><span>Plantões</span></li>
+                        <li class="nav-item" onclick="showSection('cadastros')"><i class="fas fa-user-cog"></i><span>Cadastros</span></li>
+                    </ul>
+                </nav>
+            </aside>
+            <main class="content-area">
+                <div id="dashboard-section" class="section active">
+                    <div class="card">
+                        <div class="stats-grid">
+                            <div class="stat-card"><div class="stat-value" id="total-solicitacoes">0</div><div class="stat-label">Solicitações Abertas</div></div>
+                            <div class="stat-card"><div class="stat-value" id="em-atendimento">0</div><div class="stat-label">Em Atendimento</div></div>
+                            <div class="stat-card"><div class="stat-value" id="finalizadas">0</div><div class="stat-label">Finalizadas</div></div>
+                            <div class="stat-card"><div class="stat-value" id="viaturas-disponiveis">0</div><div class="stat-label">Viaturas Disponíveis</div></div>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-header">
+                            <h2 class="card-title">Mapa de Viaturas e Ocorrências</h2>
+                            <button class="btn btn-primary" onclick="showSection('mapa')"><i class="fas fa-expand"></i> Ver Mapa Completo</button>
+                        </div>
+                        <div class="map-container"><div id="map"></div></div>
+                    </div>
+                    <div class="card">
+                        <h2 class="card-title">Ações Rápidas</h2>
+                        <div class="quick-actions">
+                            <button class="quick-action-btn" onclick="showSection('nova-solicitacao')"><i class="fas fa-plus-circle quick-action-icon"></i><span class="quick-action-text">Nova Solicitação</span></button>
+                            <button class="quick-action-btn" onclick="showSection('viaturas')"><i class="fas fa-truck quick-action-icon"></i><span class="quick-action-text">Gerenciar Viaturas</span></button>
+                            <button class="quick-action-btn" onclick="showSection('plantoes')"><i class="fas fa-calendar-alt quick-action-icon"></i><span class="quick-action-text">Gerenciar Plantões</span></button>
+                            <button class="quick-action-btn" onclick="showSection('cadastros')"><i class="fas fa-users quick-action-icon"></i><span class="quick-action-text">Gerenciar Usuários</span></button>
+                        </div>
+                    </div>
+                </div>
+                <div id="mapa-section" class="section" style="display: none;">
+                    <div class="card">
+                        <div class="card-header">
+                            <h2 class="card-title">Mapa Interativo</h2>
+                            <div class="map-controls">
+                                <button class="map-control-btn active" onclick="toggleMapLayer('all')"><i class="fas fa-layer-group"></i> Todas</button>
+                                <button class="map-control-btn" onclick="toggleMapLayer('viaturas')"><i class="fas fa-truck"></i> Viaturas</button>
+                                <button class="map-control-btn" onclick="toggleMapLayer('solicitacoes')"><i class="fas fa-exclamation-triangle"></i> Solicitações</button>
+                                <button class="map-control-btn" onclick="refreshMap()"><i class="fas fa-sync-alt"></i> Atualizar</button>
+                            </div>
+                        </div>
+                        <div class="map-container" style="height: 600px;"><div id="full-map"></div></div>
+                    </div>
+                </div>
+                <div id="solicitacoes-section" class="section" style="display: none;">
+                    <div class="card">
+                        <div class="card-header">
+                            <h2 class="card-title">Lista de Solicitações</h2>
+                            <button class="btn btn-primary" onclick="showSection('nova-solicitacao')"><i class="fas fa-plus"></i> Nova Solicitação</button>
+                        </div>
+                        <div class="table-container">
+                            <table>
+                                <thead><tr><th>Protocolo</th><th>Tipo</th><th>Status</th><th>Prioridade</th><th>Data</th><th>Ações</th></tr></thead>
+                                <tbody id="solicitacoes-table-body"><tr><td colspan="6" class="loading"><div class="spinner"></div></td></tr></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                <div id="nova-solicitacao-section" class="section" style="display: none;">
+                    <div class="card">
+                        <div class="card-header">
+                            <h2 class="card-title">Nova Solicitação</h2>
+                            <button class="btn btn-secondary" onclick="showSection('solicitacoes')"><i class="fas fa-arrow-left"></i> Voltar</button>
+                        </div>
+                        <form id="solicitacao-form" class="registration-section">
+                            <div>
+                                <div class="form-group"><label class="form-label">Tipo de Solicitação</label>
+                                    <select class="form-select" id="solicitacao-tipo" required>
+                                        <option value="">Selecione o tipo</option>
+                                        <option value="Incêndio">Incêndio</option>
+                                        <option value="Resgate">Resgate</option>
+                                        <option value="Socorro Médico">Socorro Médico</option>
+                                        <option value="Acidente de Trânsito">Acidente de Trânsito</option>
+                                        <option value="Inundação">Inundação</option>
+                                    </select>
+                                </div>
+                                <div class="form-group"><label class="form-label">Prioridade</label>
+                                    <select class="form-select" id="solicitacao-prioridade" required>
+                                        <option value="">Selecione a prioridade</option>
+                                        <option value="Emergência">Emergência</option>
+                                        <option value="Alta">Alta</option>
+                                        <option value="Normal">Normal</option>
+                                        <option value="Baixa">Baixa</option>
+                                    </select>
+                                </div>
+                                <div class="form-group"><label class="form-label">Título</label>
+                                    <input type="text" class="form-input" id="solicitacao-titulo" placeholder="Ex: Incêndio em prédio residencial" required />
+                                </div>
+                                <div class="form-group"><label class="form-label">Descrição</label>
+                                    <textarea class="form-input" id="solicitacao-descricao" rows="4" placeholder="Descreva a ocorrência em detalhes"></textarea>
+                                </div>
+                            </div>
+                            <div>
+                                <div class="form-group"><label class="form-label">Endereço</label>
+                                    <input type="text" class="form-input" id="solicitacao-endereco" placeholder="Ex: Rua das Flores, 123" required />
+                                </div>
+                                <div class="form-group"><label class="form-label">Bairro</label>
+                                    <input type="text" class="form-input" id="solicitacao-bairro" placeholder="Ex: Centro" />
+                                </div>
+                                <div class="form-group"><label class="form-label">Cidade</label>
+                                    <input type="text" class="form-input" id="solicitacao-cidade" placeholder="Ex: São Paulo" value="São Paulo" required />
+                                </div>
+                                <div class="form-group"><label class="form-label">CEP</label>
+                                    <input type="text" class="form-input" id="solicitacao-cep" placeholder="Ex: 01234-567" />
+                                </div>
+                            </div>
+                            <div>
+                                <div class="form-group"><label class="form-label">Latitude</label>
+                                    <input type="number" class="form-input" id="solicitacao-latitude" step="0.0001" value="-23.5505" required />
+                                </div>
+                                <div class="form-group"><label class="form-label">Longitude</label>
+                                    <input type="number" class="form-input" id="solicitacao-longitude" step="0.0001" value="-46.6333" required />
+                                </div>
+                                <div class="form-group checkbox-group">
+                                    <input type="checkbox" class="checkbox-input" id="usar-localizacao" />
+                                    <label class="checkbox-label" for="usar-localizacao">Usar localização atual</label>
+                                </div>
+                                <div class="form-group">
+                                    <button type="button" class="btn btn-primary" onclick="getCurrentLocation()"><i class="fas fa-map-marker-alt"></i> Obter Localização</button>
+                                </div>
+                            </div>
+                            <div>
+                                <div class="form-group"><label class="form-label">Nome do Solicitante</label>
+                                    <input type="text" class="form-input" id="solicitacao-nome" placeholder="Ex: João Silva" />
+                                </div>
+                                <div class="form-group"><label class="form-label">Telefone do Solicitante</label>
+                                    <input type="tel" class="form-input" id="solicitacao-telefone" placeholder="Ex: 11 98765-4321" />
+                                </div>
+                                <div class="form-group"><label class="form-label">Observações</label>
+                                    <textarea class="form-input" id="solicitacao-observacoes" rows="3" placeholder="Observações adicionais"></textarea>
+                                </div>
+                            </div>
+                            <div style="grid-column: 1 / -1;">
+                                <div class="form-group">
+                                    <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Salvar Solicitação</button>
+                                    <button type="button" class="btn btn-secondary" onclick="showSection('solicitacoes')"><i class="fas fa-times"></i> Cancelar</button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                <div id="viaturas-section" class="section" style="display: none;">
+                    <div class="card">
+                        <div class="card-header">
+                            <h2 class="card-title">Gerenciamento de Viaturas</h2>
+                            <button class="btn btn-primary" onclick="showViaturaModal()"><i class="fas fa-plus"></i> Nova Viatura</button>
+                        </div>
+                        <div class="table-container">
+                            <table>
+                                <thead><tr><th>ID</th><th>Identificação</th><th>Tipo</th><th>Status</th><th>Quartel</th><th>Placa</th><th>Ações</th></tr></thead>
+                                <tbody id="viaturas-table-body"><tr><td colspan="7" class="loading"><div class="spinner"></div></td></tr></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                <div id="plantoes-section" class="section" style="display: none;">
+                    <div class="card">
+                        <div class="card-header">
+                            <h2 class="card-title">Gerenciamento de Plantões</h2>
+                            <button class="btn btn-primary" onclick="showPlantaoModal()"><i class="fas fa-plus"></i> Novo Plantão</button>
+                        </div>
+                        <div class="table-container">
+                            <table>
+                                <thead><tr><th>ID</th><th>Nome</th><th>Data Início</th><th>Data Fim</th><th>Status</th><th>Ações</th></tr></thead>
+                                <tbody id="plantoes-table-body"><tr><td colspan="6" class="loading"><div class="spinner"></div></td></tr></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                <div id="cadastros-section" class="section" style="display: none;">
+                    <div class="card">
+                        <h2 class="card-title">Cadastros Adicionais</h2>
+                        <div style="margin-bottom: 30px;">
+                            <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 15px;">Gerenciar Usuários</h3>
+                            <div class="registration-section">
+                                <div class="registration-card">
+                                    <h4 style="font-size: 14px; font-weight: 600; margin-bottom: 12px;">Filtros de Usuário</h4>
+                                    <div class="checkbox-container">
+                                        <div class="checkbox-row">
+                                            <div class="checkbox-group"><input type="checkbox" class="checkbox-input" id="filter-admin" /><label class="checkbox-label" for="filter-admin">Administradores</label></div>
+                                            <div class="checkbox-group"><input type="checkbox" class="checkbox-input" id="filter-bombeiro" /><label class="checkbox-label" for="filter-bombeiro">Bombeiros</label></div>
+                                            <div class="checkbox-group"><input type="checkbox" class="checkbox-input" id="filter-cidadao" /><label class="checkbox-label" for="filter-cidadao">Cidadãos</label></div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="registration-card">
+                                    <h4 style="font-size: 14px; font-weight: 600; margin-bottom: 12px;">Permissões</h4>
+                                    <div class="checkbox-container">
+                                        <div class="checkbox-row">
+                                            <div class="checkbox-group"><input type="checkbox" class="checkbox-input" id="perm-criar" /><label class="checkbox-label" for="perm-criar">Criar Solicitações</label></div>
+                                            <div class="checkbox-group"><input type="checkbox" class="checkbox-input" id="perm-editar" /><label class="checkbox-label" for="perm-editar">Editar Solicitações</label></div>
+                                            <div class="checkbox-group"><input type="checkbox" class="checkbox-input" id="perm-excluir" /><label class="checkbox-label" for="perm-excluir">Excluir Solicitações</label></div>
+                                            <div class="checkbox-group"><input type="checkbox" class="checkbox-input" id="perm-gerenciar-viaturas" /><label class="checkbox-label" for="perm-gerenciar-viaturas">Gerenciar Viaturas</label></div>
+                                            <div class="checkbox-group"><input type="checkbox" class="checkbox-input" id="perm-gerenciar-plantoes" /><label class="checkbox-label" for="perm-gerenciar-plantoes">Gerenciar Plantões</label></div>
+                                            <div class="checkbox-group"><input type="checkbox" class="checkbox-input" id="perm-gerenciar-usuarios" /><label class="checkbox-label" for="perm-gerenciar-usuarios">Gerenciar Usuários</label></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div style="margin-bottom: 30px;">
+                            <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 15px;">Gerenciar Quartéis</h3>
+                            <div class="registration-section">
+                                <div class="registration-card">
+                                    <h4 style="font-size: 14px; font-weight: 600; margin-bottom: 12px;">Tipos de Quartel</h4>
+                                    <div class="checkbox-container">
+                                        <div class="checkbox-row">
+                                            <div class="checkbox-group"><input type="checkbox" class="checkbox-input" id="quartel-central" /><label class="checkbox-label" for="quartel-central">Quartel Central</label></div>
+                                            <div class="checkbox-group"><input type="checkbox" class="checkbox-input" id="quartel-norte" /><label class="checkbox-label" for="quartel-norte">Quartel Norte</label></div>
+                                            <div class="checkbox-group"><input type="checkbox" class="checkbox-input" id="quartel-sul" /><label class="checkbox-label" for="quartel-sul">Quartel Sul</label></div>
+                                            <div class="checkbox-group"><input type="checkbox" class="checkbox-input" id="quartel-leste" /><label class="checkbox-label" for="quartel-leste">Quartel Leste</label></div>
+                                            <div class="checkbox-group"><input type="checkbox" class="checkbox-input" id="quartel-oeste" /><label class="checkbox-label" for="quartel-oeste">Quartel Oeste</label></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div style="margin-bottom: 30px;">
+                            <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 15px;">Configurar Tipos de Solicitação</h3>
+                            <div class="registration-section">
+                                <div class="registration-card">
+                                    <h4 style="font-size: 14px; font-weight: 600; margin-bottom: 12px;">Tipos Ativos</h4>
+                                    <div class="checkbox-container">
+                                        <div class="checkbox-row">
+                                            <div class="checkbox-group"><input type="checkbox" class="checkbox-input" id="tipo-incendio" checked /><label class="checkbox-label" for="tipo-incendio">Incêndio</label></div>
+                                            <div class="checkbox-group"><input type="checkbox" class="checkbox-input" id="tipo-resgate" checked /><label class="checkbox-label" for="tipo-resgate">Resgate</label></div>
+                                            <div class="checkbox-group"><input type="checkbox" class="checkbox-input" id="tipo-socorro" checked /><label class="checkbox-label" for="tipo-socorro">Socorro Médico</label></div>
+                                            <div class="checkbox-group"><input type="checkbox" class="checkbox-input" id="tipo-acidente" checked /><label class="checkbox-label" for="tipo-acidente">Acidente de Trânsito</label></div>
+                                            <div class="checkbox-group"><input type="checkbox" class="checkbox-input" id="tipo-inundacao" checked /><label class="checkbox-label" for="tipo-inundacao">Inundação</label></div>
+                                            <div class="checkbox-group"><input type="checkbox" class="checkbox-input" id="tipo-outros" /><label class="checkbox-label" for="tipo-outros">Outros</label></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div>
+                            <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 15px;">Configurar Níveis de Prioridade</h3>
+                            <div class="registration-section">
+                                <div class="registration-card">
+                                    <h4 style="font-size: 14px; font-weight: 600; margin-bottom: 12px;">Níveis de Prioridade</h4>
+                                    <div class="checkbox-container">
+                                        <div class="checkbox-row">
+                                            <div class="checkbox-group"><input type="checkbox" class="checkbox-input" id="prioridade-emergencia" checked /><label class="checkbox-label" for="prioridade-emergencia">Emergência</label></div>
+                                            <div class="checkbox-group"><input type="checkbox" class="checkbox-input" id="prioridade-alta" checked /><label class="checkbox-label" for="prioridade-alta">Alta</label></div>
+                                            <div class="checkbox-group"><input type="checkbox" class="checkbox-input" id="prioridade-normal" checked /><label class="checkbox-label" for="prioridade-normal">Normal</label></div>
+                                            <div class="checkbox-group"><input type="checkbox" class="checkbox-input" id="prioridade-baixa" checked /><label class="checkbox-label" for="prioridade-baixa">Baixa</label></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div style="margin-top: 20px; display: flex; gap: 10px;">
+                            <button class="btn btn-primary" onclick="saveConfigurations()"><i class="fas fa-save"></i> Salvar Configurações</button>
+                            <button class="btn btn-secondary" onclick="resetConfigurations()"><i class="fas fa-undo"></i> Resetar</button>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+    <div id="register-modal" class="modal-overlay" style="display: none;">
+        <div class="modal">
+            <div class="modal-header"><h2 class="modal-title">Criar Nova Conta</h2></div>
+            <div class="modal-body">
+                <form id="register-form">
+                    <div class="form-group"><label class="form-label">Nome Completo</label><input type="text" class="form-input" id="register-nome" placeholder="Digite seu nome completo" required /></div>
+                    <div class="form-group"><label class="form-label">Email</label><input type="email" class="form-input" id="register-email" placeholder="Digite seu email" required /></div>
+                    <div class="form-group"><label class="form-label">Senha</label><input type="password" class="form-input" id="register-password" placeholder="Digite sua senha" required /></div>
+                    <div class="form-group"><label class="form-label">Confirmar Senha</label><input type="password" class="form-input" id="register-confirm-password" placeholder="Confirme sua senha" required /></div>
+                    <div class="form-group"><label class="form-label">CPF (opcional)</label><input type="text" class="form-input" id="register-cpf" placeholder="Digite seu CPF" /></div>
+                    <div class="form-group"><label class="form-label">Telefone (opcional)</label><input type="tel" class="form-input" id="register-telefone" placeholder="Digite seu telefone" /></div>
+                    <div class="form-group"><label class="form-label">Tipo de Usuário</label>
+                        <select class="form-select" id="register-tipo"><option value="cidadao">Cidadão</option><option value="bombeiro">Bombeiro</option><option value="admin">Administrador</option></select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeRegisterModal()"><i class="fas fa-times"></i> Cancelar</button>
+                <button class="btn btn-primary" onclick="handleRegister()"><i class="fas fa-user-plus"></i> Criar Conta</button>
+            </div>
+        </div>
+    </div>
+    <div id="viatura-modal" class="modal-overlay" style="display: none;">
+        <div class="modal">
+            <div class="modal-header"><h2 class="modal-title" id="viatura-modal-title">Nova Viatura</h2></div>
+            <div class="modal-body">
+                <form id="viatura-form">
+                    <input type="hidden" id="viatura-id" />
+                    <div class="form-group"><label class="form-label">Identificação</label><input type="text" class="form-input" id="viatura-identificacao" placeholder="Ex: AB-001" required /></div>
+                    <div class="form-group"><label class="form-label">Tipo</label>
+                        <select class="form-select" id="viatura-tipo" required><option value="">Selecione</option><option value="Auto Bomba">Auto Bomba</option><option value="Ambulância">Ambulância</option><option value="Resgate">Resgate</option><option value="Escada">Escada</option><option value="Comando">Comando</option><option value="Salvamento">Salvamento</option></select>
+                    </div>
+                    <div class="form-group"><label class="form-label">Status</label>
+                        <select class="form-select" id="viatura-status" required><option value="">Selecione</option><option value="Disponível">Disponível</option><option value="Em Atendimento">Em Atendimento</option><option value="Em Plantão">Em Plantão</option><option value="Manutenção">Manutenção</option></select>
+                    </div>
+                    <div class="form-group"><label class="form-label">Quartel Base</label><input type="text" class="form-input" id="viatura-quartel" placeholder="Ex: Quartel Central" /></div>
+                    <div class="form-group"><label class="form-label">Placa</label><input type="text" class="form-input" id="viatura-placa" placeholder="Ex: ABC1234" /></div>
+                    <div class="form-group"><label class="form-label">Latitude</label><input type="number" class="form-input" id="viatura-latitude" step="0.0001" placeholder="Ex: -23.5505" /></div>
+                    <div class="form-group"><label class="form-label">Longitude</label><input type="number" class="form-input" id="viatura-longitude" step="0.0001" placeholder="Ex: -46.6333" /></div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeViaturaModal()"><i class="fas fa-times"></i> Cancelar</button>
+                <button class="btn btn-primary" onclick="saveViatura()"><i class="fas fa-save"></i> Salvar Viatura</button>
+            </div>
+        </div>
+    </div>
+    <div id="plantao-modal" class="modal-overlay" style="display: none;">
+        <div class="modal">
+            <div class="modal-header"><h2 class="modal-title" id="plantao-modal-title">Novo Plantão</h2></div>
+            <div class="modal-body">
+                <form id="plantao-form">
+                    <input type="hidden" id="plantao-id" />
+                    <div class="form-group"><label class="form-label">Nome</label><input type="text" class="form-input" id="plantao-nome" placeholder="Ex: Plantão Noturno" required /></div>
+                    <div class="form-group"><label class="form-label">Data de Início</label><input type="datetime-local" class="form-input" id="plantao-data-inicio" required /></div>
+                    <div class="form-group"><label class="form-label">Data de Fim</label><input type="datetime-local" class="form-input" id="plantao-data-fim" required /></div>
+                    <div class="form-group"><label class="form-label">Status</label>
+                        <select class="form-select" id="plantao-status" required><option value="">Selecione</option><option value="Ativo">Ativo</option><option value="Finalizado">Finalizado</option><option value="Cancelado">Cancelado</option></select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closePlantaoModal()"><i class="fas fa-times"></i> Cancelar</button>
+                <button class="btn btn-primary" onclick="savePlantao()"><i class="fas fa-save"></i> Salvar Plantão</button>
+            </div>
+        </div>
+    </div>
+    <script>
+        let currentUser = null; let solicitacoes = []; let viaturas = []; let plantoes = []; let map; let fullMap; let markers = [];
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeData(); initializeMap(); loadData(); setupEventListeners();
+        });
+        function initializeData() {
+            solicitacoes = [
+                {id:1,protocolo:'SP-2024-0001',tipo:'Incêndio',status:'Aberta',prioridade:'Emergência',titulo:'Incêndio em prédio residencial',endereco:'Rua das Flores, 123 - Centro',dataAbertura:'2024-01-15T10:30:00',latitude:-23.5505,longitude:-46.6333},
+                {id:2,protocolo:'SP-2024-0002',tipo:'Resgate',status:'Em Atendimento',prioridade:'Alta',titulo:'Resgate de animal em árvore',endereco:'Av. Paulista, 1000 - Bela Vista',dataAbertura:'2024-01-15T11:45:00',latitude:-23.5614,longitude:-46.6558},
+                {id:3,protocolo:'SP-2024-0003',tipo:'Socorro Médico',status:'Finalizada',prioridade:'Normal',titulo:'Socorro médico para idoso',endereco:'Rua Augusta, 500 - Consolação',dataAbertura:'2024-01-15T09:15:00',latitude:-23.5650,longitude:-46.6580}
+            ];
+            viaturas = [
+                {id:1,identificacao:'AB-001',tipo:'Auto Bomba',status:'Disponível',quartel:'Quartel Central',placa:'ABC1234',latitude:-23.5505,longitude:-46.6333},
+                {id:2,identificacao:'AM-001',tipo:'Ambulância',status:'Em Atendimento',quartel:'Quartel Norte',placa:'AMB001',latitude:-23.5614,longitude:-46.6558},
+                {id:3,identificacao:'RE-001',tipo:'Resgate',status:'Disponível',quartel:'Quartel Sul',placa:'RES001',latitude:-23.5650,longitude:-46.6580},
+                {id:4,identificacao:'ES-001',tipo:'Escada',status:'Manutenção',quartel:'Quartel Leste',placa:'ESC001',latitude:-23.5700,longitude:-46.6400}
+            ];
+            plantoes = [
+                {id:1,nome:'Plantão Diurno - Semana 1',dataInicio:'2024-01-15T08:00:00',dataFim:'2024-01-15T18:00:00',status:'Ativo'},
+                {id:2,nome:'Plantão Noturno - Semana 1',dataInicio:'2024-01-15T18:00:00',dataFim:'2024-01-16T08:00:00',status:'Ativo'},
+                {id:3,nome:'Plantão Diurno - Semana 2',dataInicio:'2024-01-16T08:00:00',dataFim:'2024-01-16T18:00:00',status:'Finalizado'}
+            ];
+            updateDashboard();
+        }
+        function initializeMap() {
+            map = L.map('map').setView([-23.5505, -46.6333], 12);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'}).addTo(map);
+            fullMap = L.map('full-map').setView([-23.5505, -46.6333], 12);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'}).addTo(fullMap);
+            updateMap();
+        }
+        function updateMap() {
+            markers.forEach(marker => { if (map && map.hasLayer(marker)) map.removeLayer(marker); if (fullMap && fullMap.hasLayer(marker)) fullMap.removeLayer(marker); });
+            markers = [];
+            viaturas.forEach(viatura => {
+                if (viatura.latitude && viatura.longitude) {
+                    const color = getViaturaColor(viatura.status);
+                    const icon = L.divIcon({className:'viatura-marker',html:`<div style="width:30px;height:30px;background:${color};border-radius:50% 50% 50% 0;transform:rotate(-45deg);position:relative;display:flex;align-items:center;justify-content:center;"><span style="transform:rotate(45deg);color:white;font-size:12px;font-weight:bold;">🚒</span></div>`,iconSize:[30,30],iconAnchor:[15,30],popupAnchor:[0,-30]});
+                    const marker = L.marker([viatura.latitude,viatura.longitude],{icon}).addTo(map).bindPopup(`<b>${viatura.identificacao}</b><br>Tipo:${viatura.tipo}<br>Status:${viatura.status}<br>Quartel:${viatura.quartel}<br>Placa:${viatura.placa}`);
+                    markers.push(marker);
+                    const fullMarker = L.marker([viatura.latitude,viatura.longitude],{icon}).addTo(fullMap).bindPopup(`<b>${viatura.identificacao}</b><br>Tipo:${viatura.tipo}<br>Status:${viatura.status}<br>Quartel:${viatura.quartel}<br>Placa:${viatura.placa}`);
+                    markers.push(fullMarker);
+                }
+            });
+            solicitacoes.forEach(solicitacao => {
+                if (solicitacao.latitude && solicitacao.longitude) {
+                    const color = getPrioridadeColor(solicitacao.prioridade);
+                    const emoji = getTipoEmoji(solicitacao.tipo);
+                    const icon = L.divIcon({className:'solicitacao-marker',html:`<div style="width:30px;height:30px;background:${color};border-radius:50%;display:flex;align-items:center;justify-content:center;border:2px solid white;box-shadow:0 0 0 2px ${color};"><span style="color:white;font-size:14px;">${emoji}</span></div>`,iconSize:[30,30],iconAnchor:[15,15],popupAnchor:[0,-15]});
+                    const marker = L.marker([solicitacao.latitude,solicitacao.longitude],{icon}).addTo(map).bindPopup(`<b>${solicitacao.protocolo}</b><br>Tipo:${solicitacao.tipo}<br>Status:${solicitacao.status}<br>Prioridade:${solicitacao.prioridade}<br>Título:${solicitacao.titulo}<br>Endereço:${solicitacao.endereco}`);
+                    markers.push(marker);
+                    const fullMarker = L.marker([solicitacao.latitude,solicitacao.longitude],{icon}).addTo(fullMap).bindPopup(`<b>${solicitacao.protocolo}</b><br>Tipo:${solicitacao.tipo}<br>Status:${solicitacao.status}<br>Prioridade:${solicitacao.prioridade}<br>Título:${solicitacao.titulo}<br>Endereço:${solicitacao.endereco}`);
+                    markers.push(fullMarker);
+                }
+            });
+        }
+        function getViaturaColor(status) { const colors = {'Disponível':'#22c55e','Em Atendimento':'#3b82f6','Em Plantão':'#f59e0b','Manutenção':'#ef4444'}; return colors[status] || '#64748b'; }
+        function getPrioridadeColor(prioridade) { const colors = {'Emergência':'#ef4444','Alta':'#f59e0b','Normal':'#3b82f6','Baixa':'#22c55e'}; return colors[prioridade] || '#64748b'; }
+        function getTipoEmoji(tipo) { const emojis = {'Incêndio':'🔥','Resgate':'🚁','Socorro Médico':'⚕️','Acidente de Trânsito':'🚗','Inundação':'🌊'}; return emojis[tipo] || '?'; }
+        function loadData() { updateSolicitacoesTable(); updateViaturaTable(); updatePlantaoTable(); }
+        function updateDashboard() {
+            document.getElementById('total-solicitacoes').textContent = solicitacoes.filter(s => s.status === 'Aberta').length;
+            document.getElementById('em-atendimento').textContent = solicitacoes.filter(s => s.status === 'Em Atendimento').length;
+            document.getElementById('finalizadas').textContent = solicitacoes.filter(s => s.status === 'Finalizada').length;
+            document.getElementById('viaturas-disponiveis').textContent = viaturas.filter(v => v.status === 'Disponível').length;
+        }
+        function updateSolicitacoesTable() {
+            const tbody = document.getElementById('solicitacoes-table-body'); tbody.innerHTML = '';
+            if (solicitacoes.length === 0) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#6b7280;">Nenhuma solicitação</td></tr>'; return; }
+            solicitacoes.forEach(solicitacao => {
+                const row = document.createElement('tr');
+                row.innerHTML = `<td>${solicitacao.protocolo}</td><td>${solicitacao.tipo}</td><td><span class="badge badge-${getStatusBadgeClass(solicitacao.status)}">${solicitacao.status}</span></td><td><span class="badge badge-${getPrioridadeBadgeClass(solicitacao.prioridade)}">${solicitacao.prioridade}</span></td><td>${new Date(solicitacao.dataAbertura).toLocaleDateString('pt-BR')}</td><td><button class="btn btn-primary" style="padding:4px 8px;font-size:12px;" onclick="viewSolicitacao(${solicitacao.id})"><i class="fas fa-eye"></i> Ver</button></td>`;
+                tbody.appendChild(row);
+            });
+        }
+        function updateViaturaTable() {
+            const tbody = document.getElementById('viaturas-table-body'); tbody.innerHTML = '';
+            if (viaturas.length === 0) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#6b7280;">Nenhuma viatura</td></tr>'; return; }
+            viaturas.forEach(viatura => {
+                const row = document.createElement('tr');
+                row.innerHTML = `<td>${viatura.id}</td><td>${viatura.identificacao}</td><td>${viatura.tipo}</td><td><span class="badge badge-${getStatusBadgeClass(viatura.status)}">${viatura.status}</span></td><td>${viatura.quartel}</td><td>${viatura.placa}</td><td><button class="btn btn-primary" style="padding:4px 8px;font-size:12px;" onclick="editViatura(${viatura.id})"><i class="fas fa-edit"></i> Editar</button><button class="btn btn-secondary" style="padding:4px 8px;font-size:12px;" onclick="deleteViatura(${viatura.id})"><i class="fas fa-trash"></i> Excluir</button></td>`;
+                tbody.appendChild(row);
+            });
+        }
+        function updatePlantaoTable() {
+            const tbody = document.getElementById('plantoes-table-body'); tbody.innerHTML = '';
+            if (plantoes.length === 0) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#6b7280;">Nenhum plantão</td></tr>'; return; }
+            plantoes.forEach(plantao => {
+                const row = document.createElement('tr');
+                row.innerHTML = `<td>${plantao.id}</td><td>${plantao.nome}</td><td>${new Date(plantao.dataInicio).toLocaleString('pt-BR')}</td><td>${new Date(plantao.dataFim).toLocaleString('pt-BR')}</td><td><span class="badge badge-${getStatusBadgeClass(plantao.status)}">${plantao.status}</span></td><td><button class="btn btn-primary" style="padding:4px 8px;font-size:12px;" onclick="editPlantao(${plantao.id})"><i class="fas fa-edit"></i> Editar</button><button class="btn btn-secondary" style="padding:4px 8px;font-size:12px;" onclick="deletePlantao(${plantao.id})"><i class="fas fa-trash"></i> Excluir</button></td>`;
+                tbody.appendChild(row);
+            });
+        }
+        function getStatusBadgeClass(status) { const classes = {'Aberta':'danger','Em Atendimento':'warning','Finalizada':'success','Disponível':'success','Em Plantão':'info','Manutenção':'danger','Ativo':'success','Finalizado':'info','Cancelado':'danger'}; return classes[status] || 'info'; }
+        function getPrioridadeBadgeClass(prioridade) { const classes = {'Emergência':'danger','Alta':'warning','Normal':'info','Baixa':'success'}; return classes[prioridade] || 'info'; }
+        function showSection(sectionName) {
+            document.querySelectorAll('.section').forEach(s => { s.style.display = 'none'; s.classList.remove('active'); });
+            const section = document.getElementById(sectionName + '-section');
+            if (section) { section.style.display = 'block'; section.classList.add('active'); }
+            document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+            const activeNav = document.querySelector('.nav-item:nth-child(1)');
+            if (activeNav) activeNav.classList.add('active');
+        }
+        function handleLogin() {
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+            if (!email || !password) { alert('Preencha email e senha'); return; }
+            currentUser = {email: email, nome: email.split('@')[0], tipo: 'admin'};
+            alert(`Bem-vindo, ${currentUser.nome}!`);
+            document.getElementById('loginEmail').value = ''; document.getElementById('loginPassword').value = '';
+        }
+        function showRegisterModal() { document.getElementById('register-modal').style.display = 'flex'; }
+        function closeRegisterModal() { document.getElementById('register-modal').style.display = 'none'; }
+        function handleRegister() {
+            const nome = document.getElementById('register-nome').value;
+            const email = document.getElementById('register-email').value;
+            const password = document.getElementById('register-password').value;
+            const confirmPassword = document.getElementById('register-confirm-password').value;
+            if (!nome || !email || !password || !confirmPassword) { alert('Preencha todos os campos'); return; }
+            if (password !== confirmPassword) { alert('Senhas não coincidem'); return; }
+            alert('Conta criada com sucesso!'); closeRegisterModal(); document.getElementById('register-form').reset();
+        }
+        function viewSolicitacao(id) { const s = solicitacoes.find(x => x.id === id); if (!s) return; alert(`Detalhes:\nProtocolo:${s.protocolo}\nTipo:${s.tipo}\nStatus:${s.status}\nPrioridade:${s.prioridade}\nTítulo:${s.titulo}\nEndereço:${s.endereco}\nData:${new Date(s.dataAbertura).toLocaleString('pt-BR')}`); }
+        function getCurrentLocation() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    pos => { document.getElementById('solicitacao-latitude').value = pos.coords.latitude; document.getElementById('solicitacao-longitude').value = pos.coords.longitude; alert('Localização obtida!'); },
+                    err => alert('Erro: ' + err.message)
+                );
+            } else { alert('Geolocalização não suportada'); }
+        }
+        function showViaturaModal(id = null) {
+            const modal = document.getElementById('viatura-modal');
+            if (id) { const v = viaturas.find(x => x.id === id); if (v) { document.getElementById('viatura-id').value = v.id; document.getElementById('viatura-identificacao').value = v.identificacao; document.getElementById('viatura-tipo').value = v.tipo; document.getElementById('viatura-status').value = v.status; document.getElementById('viatura-quartel').value = v.quartel; document.getElementById('viatura-placa').value = v.placa; document.getElementById('viatura-latitude').value = v.latitude; document.getElementById('viatura-longitude').value = v.longitude; document.getElementById('viatura-modal-title').textContent = 'Editar Viatura'; } }
+            else { document.getElementById('viatura-form').reset(); document.getElementById('viatura-modal-title').textContent = 'Nova Viatura'; }
+            modal.style.display = 'flex';
+        }
+        function closeViaturaModal() { document.getElementById('viatura-modal').style.display = 'none'; }
+        function editViatura(id) { showViaturaModal(id); }
+        function deleteViatura(id) { if (confirm('Excluir viatura?')) { viaturas = viaturas.filter(v => v.id !== id); updateViaturaTable(); updateMap(); updateDashboard(); } }
+        function saveViatura() {
+            const id = document.getElementById('viatura-id').value;
+            const data = {identificacao:document.getElementById('viatura-identificacao').value,tipo:document.getElementById('viatura-tipo').value,status:document.getElementById('viatura-status').value,quartel:document.getElementById('viatura-quartel').value,placa:document.getElementById('viatura-placa').value,latitude:parseFloat(document.getElementById('viatura-latitude').value)||-23.5505,longitude:parseFloat(document.getElementById('viatura-longitude').value)||-46.6333};
+            if (id) { const idx = viaturas.findIndex(v => v.id === parseInt(id)); if (idx !== -1) { viaturas[idx] = {id:parseInt(id),...data}; } }
+            else { const newId = viaturas.length > 0 ? Math.max(...viaturas.map(v => v.id)) + 1 : 1; viaturas.push({id:newId,...data}); }
+            closeViaturaModal(); updateViaturaTable(); updateMap(); updateDashboard();
+        }
+        function showPlantaoModal(id = null) {
+            const modal = document.getElementById('plantao-modal');
+            if (id) { const p = plantoes.find(x => x.id === id); if (p) { document.getElementById('plantao-id').value = p.id; document.getElementById('plantao-nome').value = p.nome; document.getElementById('plantao-data-inicio').value = new Date(p.dataInicio).toISOString().slice(0,16); document.getElementById('plantao-data-fim').value = new Date(p.dataFim).toISOString().slice(0,16); document.getElementById('plantao-status').value = p.status; document.getElementById('plantao-modal-title').textContent = 'Editar Plantão'; } }
+            else { document.getElementById('plantao-form').reset(); document.getElementById('plantao-modal-title').textContent = 'Novo Plantão'; }
+            modal.style.display = 'flex';
+        }
+        function closePlantaoModal() { document.getElementById('plantao-modal').style.display = 'none'; }
+        function editPlantao(id) { showPlantaoModal(id); }
+        function deletePlantao(id) { if (confirm('Excluir plantão?')) { plantoes = plantoes.filter(p => p.id !== id); updatePlantaoTable(); } }
+        function savePlantao() {
+            const id = document.getElementById('plantao-id').value;
+            const data = {nome:document.getElementById('plantao-nome').value,dataInicio:document.getElementById('plantao-data-inicio').value,dataFim:document.getElementById('plantao-data-fim').value,status:document.getElementById('plantao-status').value};
+            if (id) { const idx = plantoes.findIndex(p => p.id === parseInt(id)); if (idx !== -1) { plantoes[idx] = {id:parseInt(id),...data}; } }
+            else { const newId = plantoes.length > 0 ? Math.max(...plantoes.map(p => p.id)) + 1 : 1; plantoes.push({id:newId,...data}); }
+            closePlantaoModal(); updatePlantaoTable();
+        }
+        function toggleMapLayer(layer) {
+            document.querySelectorAll('.map-control-btn').forEach(b => b.classList.remove('active'));
+            event.target.closest('.map-control-btn').classList.add('active');
+            alert(`Mostrando camada: ${layer}`);
+        }
+        function refreshMap() { updateMap(); alert('Mapa atualizado!'); }
+        function saveConfigurations() {
+            const config = {
+                filters:{admin:document.getElementById('filter-admin').checked,bombeiro:document.getElementById('filter-bombeiro').checked,cidadao:document.getElementById('filter-cidadao').checked},
+                permissions:{criar:document.getElementById('perm-criar').checked,editar:document.getElementById('perm-editar').checked,excluir:document.getElementById('perm-excluir').checked,gerenciarViatura:document.getElementById('perm-gerenciar-viaturas').checked,gerenciarPlantao:document.getElementById('perm-gerenciar-plantoes').checked,gerenciarUsuario:document.getElementById('perm-gerenciar-usuarios').checked},
+                quartels:{central:document.getElementById('quartel-central').checked,norte:document.getElementById('quartel-norte').checked,sul:document.getElementById('quartel-sul').checked,leste:document.getElementById('quartel-leste').checked,oeste:document.getElementById('quartel-oeste').checked},
+                tipos:{incendio:document.getElementById('tipo-incendio').checked,resgate:document.getElementById('tipo-resgate').checked,socorro:document.getElementById('tipo-socorro').checked,acidente:document.getElementById('tipo-acidente').checked,inundacao:document.getElementById('tipo-inundacao').checked,outros:document.getElementById('tipo-outros').checked},
+                prioridades:{emergencia:document.getElementById('prioridade-emergencia').checked,alta:document.getElementById('prioridade-alta').checked,normal:document.getElementById('prioridade-normal').checked,baixa:document.getElementById('prioridade-baixa').checked}
+            };
+            console.log('Configurações salvas:', config); alert('Configurações salvas!');
+        }
+        function resetConfigurations() {
+            document.querySelectorAll('.checkbox-input').forEach(cb => cb.checked = false);
+            document.getElementById('tipo-incendio').checked = true; document.getElementById('tipo-resgate').checked = true;
+            document.getElementById('tipo-socorro').checked = true; document.getElementById('tipo-acidente').checked = true;
+            document.getElementById('tipo-inundacao').checked = true; document.getElementById('prioridade-emergencia').checked = true;
+            document.getElementById('prioridade-alta').checked = true; document.getElementById('prioridade-normal').checked = true;
+            document.getElementById('prioridade-baixa').checked = true; alert('Configurações resetadas!');
+        }
+        function setupEventListeners() {
+            document.getElementById('solicitacao-form').addEventListener('submit', function(e) { e.preventDefault(); saveSolicitacao(); });
+        }
+        function saveSolicitacao() {
+            const newId = solicitacoes.length > 0 ? Math.max(...solicitacoes.map(s => s.id)) + 1 : 1;
+            solicitacoes.push({
+                id:newId,protocolo:`SP-2024-${String(newId).padStart(4,'0')}`,tipo:document.getElementById('solicitacao-tipo').value,
+                prioridade:document.getElementById('solicitacao-prioridade').value,titulo:document.getElementById('solicitacao-titulo').value,
+                descricao:document.getElementById('solicitacao-descricao').value,endereco:document.getElementById('solicitacao-endereco').value,
+                bairro:document.getElementById('solicitacao-bairro').value,cidade:document.getElementById('solicitacao-cidade').value,
+                cep:document.getElementById('solicitacao-cep').value,latitude:parseFloat(document.getElementById('solicitacao-latitude').value),
+                longitude:parseFloat(document.getElementById('solicitacao-longitude').value),nomeSolicitante:document.getElementById('solicitacao-nome').value,
+                telefoneSolicitante:document.getElementById('solicitacao-telefone').value,observacoes:document.getElementById('solicitacao-observacoes').value,
+                status:'Aberta',dataAbertura:new Date().toISOString()
+            });
+            updateSolicitacoesTable(); updateMap(); updateDashboard(); alert('Solicitação criada!'); showSection('solicitacoes');
+        }
+    </script>
+</body>
+</html>
