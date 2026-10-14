@@ -313,7 +313,7 @@ Este projeto está sob a licença BSD 3-Clause. Veja o arquivo [LICENSE](LICENSE
 
 ---
 
-**Desenvolvido por:** Kaue Codify
+**Desenvolvido por:** PROJETO INTEGRADOR II - (TECNOLOGIA DA INFORMAÇÃO | ENGENHARIA DA COMPUTAÇÃO)
 
 **Versão:** 1.0.0
 
