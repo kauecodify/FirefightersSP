@@ -1,0 +1,57 @@
+version: '3.8'
+
+services:
+  # Backend API
+  api:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: firefighterssp-api
+    ports:
+      - "5000:80"
+      - "5001:443"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:80
+      - ConnectionStrings__DefaultConnection=Data Source=/app/database.db
+      - Jwt__Key=YOUR_SUPER_SECRET_JWT_KEY_1234567890
+      - Jwt__Issuer=FirefightersSP
+      - Jwt__Audience=FirefightersSP
+      - Authentication__Google__ClientId=${GOOGLE_CLIENT_ID}
+      - Authentication__Google__ClientSecret=${GOOGLE_CLIENT_SECRET}
+    volumes:
+      - ./backend/data:/app/data
+    restart: unless-stopped
+    networks:
+      - firefighterssp-network
+
+  # Frontend
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:5000
+        NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+    container_name: firefighterssp-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_API_URL=http://api:80
+      - NEXT_PUBLIC_GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+    depends_on:
+      - api
+    restart: unless-stopped
+    networks:
+      - firefighterssp-network
+
+  # Database (SQLite - file-based, no separate container needed)
+  # SQLite will use a file in the api container
+
+networks:
+  firefighterssp-network:
+    driver: bridge
+
+volumes:
+  sqlite-data:
